@@ -13,9 +13,9 @@ import (
 
 type config struct {
 	sceneName string
-	itemName string
+	itemName  string
 	endpoints string
-	password string
+	password  string
 }
 
 func parseFlags() (config, error) {
@@ -49,21 +49,24 @@ func poll(endpoint, password, scene, item string) {
 				resp, err := req.SendReceive(c)
 				if err != nil {
 					log.Printf("Couldn't get properties of %s/%s: %v\n", scene, item, err)
-					return
+					continue
 				}
-				if resp.Width < 1919 || resp.Width > 1921 || resp.Height < 1079 || resp.Height > 1081 {
+				if (resp.Width < 1919 || resp.Width > 1921) && (resp.Height < 1079 || resp.Height > 1081) {
 					scaleW := 1920.0 / float64(resp.SourceWidth)
 					scaleH := 1080.0 / float64(resp.SourceHeight)
 					scale := scaleH
 					if scaleW < scaleH {
 						scale = scaleW
 					}
+					// This sleep prevents us from actually crashing OBS completely. Yes, really.
+					time.Sleep(3 * time.Second)
 					log.Printf("Scaling %s/%s by %f (current size: %fx%f; source size: %dx%d)\n", scene, item, scale, resp.Width, resp.Height, resp.SourceWidth, resp.SourceHeight)
-					obsws.NewSetSceneItemTransformRequest(scene, item, scale, scale, 0)
+					//obsws.NewSetSceneItemPropertiesRequest(scene, item, resp.PositionX, resp.PositionY, resp.PositionAlignment, resp.Rotation, scale, scale, resp.CropTop, resp.CropBottom, resp.CropLeft, resp.CropRight, resp.Visible, resp.Locked, resp.BoundsType, resp.BoundsAlignment, resp.BoundsX, resp.BoundsY)
+					req := obsws.NewSetSceneItemTransformRequest(scene, item, scale, scale, 0)
 					_, err := req.SendReceive(c)
 					if err != nil {
 						log.Printf("Couldn't set transform of %s/%s: %v\n", scene, item, err)
-						return
+						continue
 					}
 				}
 				time.Sleep(1 * time.Second)
@@ -85,5 +88,5 @@ func main() {
 	for _, endpoint := range endpoints {
 		go poll(endpoint, c.password, c.sceneName, c.itemName)
 	}
-	select{}
+	select {}
 }
