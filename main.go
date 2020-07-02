@@ -16,6 +16,7 @@ type config struct {
 	itemName  string
 	endpoints string
 	password  string
+	port      int
 }
 
 func parseFlags() (config, error) {
@@ -24,6 +25,7 @@ func parseFlags() (config, error) {
 	flag.StringVar(&c.password, "password", "", "The OBS password")
 	flag.StringVar(&c.sceneName, "scene-name", "Panel", "Name of the scene")
 	flag.StringVar(&c.itemName, "item-name", "RTMP stream", "Name of the item")
+	flag.IntVar(&c.port, "port", 4444, "OBS port number")
 	flag.Parse()
 
 	if c.endpoints == "" {
@@ -32,16 +34,18 @@ func parseFlags() (config, error) {
 	return c, nil
 }
 
-func poll(endpoint, password, scene, item string) {
+func poll(endpoint string, port int, password, scene, item string) {
 	// Connect a client.
 	for {
 		func() {
-			c := obsws.Client{Host: endpoint, Port: 4444, Password: password}
+			log.Printf("Connecting to %s:%d...\n", endpoint, port)
+			c := obsws.Client{Host: endpoint, Port: port, Password: password}
 			if err := c.Connect(); err != nil {
-				log.Fatalln(err)
+				log.Printf("Couldn't connect to %s:%d, retrying later...\n", endpoint, port)
+				time.Sleep(20 * time.Second)
 				return
 			}
-			log.Printf("Connected to %s\n", endpoint)
+			log.Printf("Connected to %s:%d\n", endpoint, port)
 			defer c.Disconnect()
 
 			for {
@@ -49,7 +53,7 @@ func poll(endpoint, password, scene, item string) {
 				resp, err := req.SendReceive(c)
 				if err != nil {
 					log.Printf("Couldn't get properties of %s/%s: %v\n", scene, item, err)
-					continue
+					return
 				}
 				if (resp.Width < 1919 || resp.Width > 1921) && (resp.Height < 1079 || resp.Height > 1081) {
 					scaleW := 1920.0 / float64(resp.SourceWidth)
@@ -66,7 +70,7 @@ func poll(endpoint, password, scene, item string) {
 					_, err := req.SendReceive(c)
 					if err != nil {
 						log.Printf("Couldn't set transform of %s/%s: %v\n", scene, item, err)
-						continue
+						return
 					}
 				}
 				time.Sleep(1 * time.Second)
@@ -86,7 +90,7 @@ func main() {
 	}
 	endpoints := strings.Split(c.endpoints, ",")
 	for _, endpoint := range endpoints {
-		go poll(endpoint, c.password, c.sceneName, c.itemName)
+		go poll(endpoint, c.port, c.password, c.sceneName, c.itemName)
 	}
 	select {}
 }
