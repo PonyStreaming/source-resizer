@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,11 +29,26 @@ func parseFlags() (config, error) {
 	flag.StringVar(&c.sceneName, "scene-name", "Panel", "Name of the scene")
 	flag.StringVar(&c.itemName, "item-name", "RTMP stream", "Name of the item")
 	flag.IntVar(&c.port, "port", 4444, "OBS port number")
+	var resolution string
+	flag.StringVar(&resolution, "resolution", "1920x1080", "resolution to scale to")
 	flag.Parse()
 
 	if c.endpoints == "" {
 		return c, fmt.Errorf("you must specify --endpoints")
 	}
+
+	resolutionParts := strings.Split(resolution, "x")
+	if len(resolutionParts) != 2 {
+		return c, fmt.Errorf("--resolution must be of the form WIDTHxHEIGHT, e.g. 1920x1080")
+	}
+	var err error
+	if c.width, err = strconv.Atoi(resolutionParts[0]); err != nil {
+		return c, fmt.Errorf("couldn't parse resolution width: %v", err)
+	}
+	if c.height, err = strconv.Atoi(resolutionParts[1]); err != nil {
+		return c, fmt.Errorf("couldn't parse resolution height: %v", err)
+	}
+
 	return c, nil
 }
 
