@@ -17,6 +17,8 @@ type config struct {
 	endpoints string
 	password  string
 	port      int
+	width     int
+	height    int
 }
 
 func parseFlags() (config, error) {
@@ -55,7 +57,7 @@ func poll(endpoint string, port int, password, scene, item string) {
 					log.Printf("Couldn't get properties of %s/%s: %v\n", scene, item, err)
 					return
 				}
-				if (resp.Width < 1919 || resp.Width > 1921) && (resp.Height < 1079 || resp.Height > 1081) {
+				if (resp.SourceHeight > 0 && resp.SourceWidth > 0) && (resp.Width < 1919 || resp.Width > 1921) && (resp.Height < 1079 || resp.Height > 1081) {
 					scaleW := 1920.0 / float64(resp.SourceWidth)
 					scaleH := 1080.0 / float64(resp.SourceHeight)
 					scale := scaleH
